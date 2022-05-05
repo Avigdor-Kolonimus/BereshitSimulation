@@ -38,19 +38,17 @@ func (simulator *Simulator) Run() {
 		return
 	}
 	for bereshit.Altitude > 0 && simulator.Time < 700 {
-		if simulator.Time%10 == 0 || bereshit.Altitude < 100 {
-			row := bereshit.ToString(simulator.Time)
-
-			// to console
+		row := bereshit.ToString(simulator.Time)
+		if simulator.Time%10 == 0 || bereshit.Altitude < 100 { // to console
 			fmt.Println(row)
-
-			// to csv
-			if err := csvWriter.Write(row); err != nil {
-				fmt.Println("Error writing row to file", err)
-				return
-			}
 		}
-		bereshit.BoazLanding()
+		// to csv
+		if err := csvWriter.Write(row); err != nil {
+			fmt.Println("Error writing row to file", err)
+			return
+		}
+
+		bereshit.Landing()
 		simulator.Time += simulator.DeltaTime
 	}
 	// row := bereshit.ToStringFinish(simulator.Time)
