@@ -20,6 +20,8 @@ const (
 	DeltaTime    float64 = 1 // sec
 )
 
+var flag = false
+
 type Bereshit struct {
 	VerticalSpeed    float64
 	HorizontalSpeed  float64
@@ -108,18 +110,24 @@ func (bereshit *Bereshit) BoazLanding() {
 
 func (bereshit *Bereshit) Landing() {
 	// over 2 km above the ground
-	if bereshit.Altitude > 2000 { // maintain a vertical speed of [20-25] m/s
-		if bereshit.VerticalSpeed > 25 { // more power for braking
-			bereshit.NN += 0.003 * DeltaTime
-		}
-		if bereshit.VerticalSpeed < 20 { // less power for braking
-			bereshit.NN -= 0.003 * DeltaTime
-		}
-		if bereshit.Altitude > 3500 && bereshit.Altitude < 6000 {
-			bereshit.Angle = 57.0
-		}
-		if bereshit.Altitude > 2000 && bereshit.Altitude < 3500 {
-			bereshit.Angle = 54.0
+	if bereshit.Altitude > 2000 {
+		bereshit.NN = 1.0
+		if bereshit.Altitude > 10000 && !flag {
+			bereshit.Angle += 3
+			if bereshit.Angle > 82 {
+				bereshit.Angle = 82.3
+				flag = true
+			}
+		} else {
+			if bereshit.Altitude > 8000 {
+				bereshit.Angle -= 2
+				if bereshit.Angle < 58 {
+					bereshit.Angle = 58.3
+					flag = false
+				}
+			} else {
+				bereshit.NN = 0.825
+			}
 		}
 	} else { // lower than 2 km - horizontal speed should be close to zero
 		if bereshit.Angle > 3 { // rotate to vertical position.
@@ -131,32 +139,17 @@ func (bereshit *Bereshit) Landing() {
 		if bereshit.HorizontalSpeed < 2 {
 			bereshit.HorizontalSpeed = 0
 		}
-		bereshit.NN = 0.5 // brake slowly, a proper PID controller here is needed!
-
-		if bereshit.Altitude < 1500 && bereshit.Altitude > 1000 {
-			bereshit.NN = 0.4
-		}
-
-		if bereshit.Altitude < 1000 && bereshit.Altitude > 500 {
-			bereshit.NN = 0.5
-		}
-		if bereshit.Altitude < 500 && bereshit.Altitude > 250 {
-			bereshit.NN = 0.55
-		}
-		if bereshit.Altitude < 250 && bereshit.Altitude > 125 {
-			bereshit.NN = 0.7
-		}
+		bereshit.NN = 0.68           // brake slowly, a proper PID controller here is needed!
 		if bereshit.Altitude < 125 { // very close to the ground!
-			bereshit.NN = 1                 // maximum braking!
-			if bereshit.VerticalSpeed < 5 { // if it is slow enough - go easy on the brakes
-				bereshit.NN = 0.435
+			bereshit.NN = 0.9                // maximum braking!
+			if bereshit.VerticalSpeed < 10 { // if it is slow enough - go easy on the brakes
+				bereshit.NN = 0.665
 			}
 		}
 	}
-	if bereshit.Altitude < 5 { // no need to stop
-		bereshit.NN = 0.68
+	if bereshit.Altitude < 5 { // very close to the ground!
+		bereshit.NN = 0.4
 	}
-
 	// main computations
 	angle_rad := ToRadians(bereshit.Angle)
 	horizontal_acc := math.Sin(angle_rad) * bereshit.AccelerationRate
