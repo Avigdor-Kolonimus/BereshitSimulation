@@ -53,6 +53,11 @@ func (bereshit *Bereshit) ToStringFinish(time int) []string {
 		"0.000", fmt.Sprintf("%.3f", bereshit.Weight), "0.000", fmt.Sprintf("%.3f", bereshit.Fuel)}
 	return row
 }
+
+func (bereshit *Bereshit) PID() (float64, float64, float64, float64, float64, float64, float64, float64, float64) {
+	return bereshit.VerticalSpeed, bereshit.HorizontalSpeed, bereshit.Distance, bereshit.Altitude, bereshit.Angle, bereshit.Weight, bereshit.AccelerationRate, bereshit.Fuel, bereshit.NN
+}
+
 func (bereshit *Bereshit) BoazLanding() {
 	// over 2 km above the ground
 	if bereshit.Altitude > 2000 { // maintain a vertical speed of [20-25] m/s

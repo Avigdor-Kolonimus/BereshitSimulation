@@ -51,8 +51,7 @@ func (simulator *Simulator) Run() {
 		bereshit.Landing()
 		simulator.Time += simulator.DeltaTime
 	}
-	// row := bereshit.ToStringFinish(simulator.Time)
-	row := bereshit.ToString(simulator.Time)
+	row := bereshit.ToStringFinish(simulator.Time)
 	fmt.Println(row)
 
 	// to csv
