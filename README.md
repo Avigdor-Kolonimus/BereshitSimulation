@@ -13,3 +13,13 @@ All these parameters and few more will calculate every frame; it can be either 1
 
 There is no graphics in this simulation, so the only way to see what happened is debug mode on which prints details every frame.
 More info about the Beresheet craft can be found -  https://en.wikipedia.org/wiki/Beresheet
+
+## How to run?
+### v1.0.0
+In class, we demonstrated this version. There are two algorithms in this version: BoazLanding (leaves 16 liters of fuel) and Landing (leaves 21 liters of fuel).
+Run the simulation by entering the `make run` command.
+### v2.0.0
+Following our demonstration of algorithms to students in the classroom, we designed a new one.
+- `make runBoaz` - runs the algorithm that we received along with the assignment (leaves 16 liters of fuel).
+- `make run` - runs the algorithm that we showed in the class (leaves 21 liters of fuel).
+- `make runTwoPID` - runs the new algorithm (leaves 24 liters of fuel).
