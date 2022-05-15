@@ -5,6 +5,8 @@ import (
 	"math"
 
 	"github.com/Avigdor-Kolonimus/BereshitSimulation/internal/moon"
+	pidLander "github.com/Avigdor-Kolonimus/BereshitSimulation/internal/pid"
+	"github.com/Avigdor-Kolonimus/BereshitSimulation/internal/utils"
 )
 
 const (
@@ -12,12 +14,10 @@ const (
 	WEIGHT_FULE float64 = 420                      // kg
 	WEIGHT_FULL float64 = WEIGHT_EMP + WEIGHT_FULE // kg
 	// https://davidson.weizmann.ac.il/online/askexpert/%D7%90%D7%99%D7%9A-%D7%9E%D7%98%D7%99%D7%A1%D7%99%D7%9D-%D7%97%D7%9C%D7%9C%D7%99%D7%AA-%D7%9C%D7%99%D7%A8%D7%97
-	MAIN_ENG_F   float64 = 430   // N
-	SECOND_ENG_F float64 = 25    // N
-	MAIN_BURN    float64 = 0.15  //liter per sec, 12 liter per m'
-	SECOND_BURN  float64 = 0.009 //liter per sec 0.6 liter per m'
-	ALL_BURN     float64 = MAIN_BURN + 8*SECOND_BURN
-	DeltaTime    float64 = 1 // sec
+	MAIN_BURN   float64 = 0.15  //liter per sec, 12 liter per m'
+	SECOND_BURN float64 = 0.009 //liter per sec 0.6 liter per m'
+	ALL_BURN    float64 = MAIN_BURN + 8*SECOND_BURN
+	DeltaTime   float64 = 1 // sec
 )
 
 var flag = false
@@ -54,10 +54,6 @@ func (bereshit *Bereshit) ToStringFinish(time int) []string {
 	return row
 }
 
-func (bereshit *Bereshit) PID() (float64, float64, float64, float64, float64, float64, float64, float64, float64) {
-	return bereshit.VerticalSpeed, bereshit.HorizontalSpeed, bereshit.Distance, bereshit.Altitude, bereshit.Angle, bereshit.Weight, bereshit.AccelerationRate, bereshit.Fuel, bereshit.NN
-}
-
 func (bereshit *Bereshit) BoazLanding() {
 	// over 2 km above the ground
 	if bereshit.Altitude > 2000 { // maintain a vertical speed of [20-25] m/s
@@ -90,7 +86,7 @@ func (bereshit *Bereshit) BoazLanding() {
 	}
 
 	// main computations
-	angle_rad := ToRadians(bereshit.Angle)
+	angle_rad := utils.ToRadians(bereshit.Angle)
 	horizontal_acc := math.Sin(angle_rad) * bereshit.AccelerationRate
 	vertical_acc := math.Cos(angle_rad) * bereshit.AccelerationRate
 	moon_acc := moon.GetAcc(bereshit.HorizontalSpeed)
@@ -99,7 +95,7 @@ func (bereshit *Bereshit) BoazLanding() {
 	if bereshit.Fuel > 0 {
 		bereshit.Fuel -= dw
 		bereshit.Weight = WEIGHT_EMP + bereshit.Fuel
-		bereshit.AccelerationRate = bereshit.NN * accMax(bereshit.Weight)
+		bereshit.AccelerationRate = bereshit.NN * utils.AccMax(bereshit.Weight)
 	} else { // ran out of fuel
 		bereshit.AccelerationRate = 0.0
 	}
@@ -156,7 +152,7 @@ func (bereshit *Bereshit) Landing() {
 		bereshit.NN = 0.4
 	}
 	// main computations
-	angle_rad := ToRadians(bereshit.Angle)
+	angle_rad := utils.ToRadians(bereshit.Angle)
 	horizontal_acc := math.Sin(angle_rad) * bereshit.AccelerationRate
 	vertical_acc := math.Cos(angle_rad) * bereshit.AccelerationRate
 	moon_acc := moon.GetAcc(bereshit.HorizontalSpeed)
@@ -165,7 +161,7 @@ func (bereshit *Bereshit) Landing() {
 	if bereshit.Fuel > 0 {
 		bereshit.Fuel -= dw
 		bereshit.Weight = WEIGHT_EMP + bereshit.Fuel
-		bereshit.AccelerationRate = bereshit.NN * accMax(bereshit.Weight)
+		bereshit.AccelerationRate = bereshit.NN * utils.AccMax(bereshit.Weight)
 	} else { // ran out of fuel
 		bereshit.AccelerationRate = 0.0
 	}
@@ -178,22 +174,44 @@ func (bereshit *Bereshit) Landing() {
 	bereshit.Distance -= bereshit.HorizontalSpeed * DeltaTime
 	bereshit.Altitude -= bereshit.VerticalSpeed * DeltaTime
 }
+func (bereshit *Bereshit) TwoPIDLanding(pid *pidLander.PID) {
+	// over 2 km above the ground
+	if bereshit.Altitude > 2000 {
+		bereshit.Angle = 61
+	} else { // lower than 2 km - horizontal speed should be close to zero
+		if bereshit.Altitude < 1700 {
+			if bereshit.Angle > 3 { // rotate to vertical position.
+				bereshit.Angle -= 3
+			} else {
+				bereshit.Angle = 0
+			}
+		}
+	}
+	if bereshit.HorizontalSpeed < 2 {
+		bereshit.HorizontalSpeed = 0
+	}
+	bereshit.NN = pid.Compute(bereshit.Angle, bereshit.Altitude, bereshit.VerticalSpeed, bereshit.Weight)
 
-func accMax(weight float64) float64 {
-	return acc(weight, true, 8)
-}
-func acc(weight float64, main bool, seconds int) float64 {
-	var t float64 = 0
+	// main computations
+	angle_rad := utils.ToRadians(bereshit.Angle)
+	horizontal_acc := math.Sin(angle_rad) * bereshit.AccelerationRate
+	vertical_acc := math.Cos(angle_rad) * bereshit.AccelerationRate
+	moon_acc := moon.GetAcc(bereshit.HorizontalSpeed)
+	dw := DeltaTime * ALL_BURN * bereshit.NN
 
-	if main {
-		t += MAIN_ENG_F
+	if bereshit.Fuel > 0 {
+		bereshit.Fuel -= dw
+		bereshit.Weight = WEIGHT_EMP + bereshit.Fuel
+		bereshit.AccelerationRate = bereshit.NN * utils.AccMax(bereshit.Weight)
+	} else { // ran out of fuel
+		bereshit.AccelerationRate = 0.0
 	}
 
-	t += float64(seconds) * SECOND_ENG_F
-	ans := t / weight
-	return ans
-}
-
-func ToRadians(degrees float64) float64 {
-	return float64(degrees) * (math.Pi / 180.0)
+	vertical_acc -= moon_acc
+	if bereshit.HorizontalSpeed > 0 {
+		bereshit.HorizontalSpeed -= horizontal_acc * DeltaTime
+	}
+	bereshit.VerticalSpeed -= vertical_acc * DeltaTime
+	bereshit.Distance -= bereshit.HorizontalSpeed * DeltaTime
+	bereshit.Altitude -= bereshit.VerticalSpeed * DeltaTime
 }
