@@ -3,14 +3,20 @@ PROJECTNAME := $(shell basename "$(PWD)")
 GOBASE := $(shell pwd)
 GOBIN := $(GOBASE)/bin
 GOFILES := $(wildcard *.go)
-CSVFILE := BereshitLanding.csv
+CSVFILE := *Bereshit*Landing.csv
 
 build:
 	@echo "  >  Building binary..."
 	go build -o $(GOBIN)/$(PROJECTNAME) $(GOFILES)
 
+runBoaz:
+	go run main.go -algorithm 0
+
 run:
-	go run main.go
+	go run main.go -algorithm 1
+
+runTwoPID:
+	go run main.go -algorithm 2
 
 clean:
 	@echo "  >  Cleaning build cache"
